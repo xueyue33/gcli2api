@@ -197,17 +197,21 @@ async def openai_request_to_gemini_payload(openai_request: ChatCompletionRequest
         function_declarations = []
         for tool in openai_request.tools:
             if tool.type == "function":
-                # 清理parameters中的additionalProperties字段，Gemini API不支持
+                # 清理parameters中的Gemini API不支持的字段
                 parameters = tool.function.parameters.copy() if tool.function.parameters else {}
                 if "additionalProperties" in parameters:
                     del parameters["additionalProperties"]
+                if "$schema" in parameters:
+                    del parameters["$schema"]
                 
-                # 递归清理嵌套对象中的additionalProperties
+                # 递归清理嵌套对象中的Gemini不支持的JSON Schema字段
                 def clean_additional_properties(obj):
                     if isinstance(obj, dict):
-                        # 删除当前层级的additionalProperties
-                        if "additionalProperties" in obj:
-                            del obj["additionalProperties"]
+                        # 删除当前层级的不支持字段
+                        unsupported_fields = ["additionalProperties", "$schema"]
+                        for field in unsupported_fields:
+                            if field in obj:
+                                del obj[field]
                         # 递归处理嵌套的对象
                         for key, value in obj.items():
                             if isinstance(value, dict):
